@@ -1,14 +1,32 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import uuid
+import traceback
 
 app = Flask(__name__)
 CORS(app)
 
-# In-memory session store
+# Global Error Handler: Ensure Flask NEVER returns HTML, always returns JSON
+@app.errorhandler(Exception)
+def handle_unexpected_error(error):
+    return jsonify({
+        "ok": False, 
+        "state": "error",
+        "error": str(error),
+        "trace": traceback.format_exc()
+    }), 500
+
+@app.errorhandler(404)
+def handle_404(error):
+    return jsonify({
+        "ok": False, 
+        "state": "error",
+        "error": "API Endpoint not found (404)"
+    }), 404
+
 SESSIONS = {}
 
-@app.route('/')
+@app.route('/', methods=['GET'])
 def home():
     return jsonify({"status": "online", "message": "API is running successfully"})
 
@@ -58,7 +76,6 @@ def submit_otp():
         sess["logs"].append({"level": "ok", "msg": f"OTP {otp} received and verified successfully."})
         sess["state"] = "complete"
         
-        # Simulated result structure
         sess["pdf_result"] = {
             "name": "Verified Resident",
             "aadhaar_no": "XXXX-XXXX-1234",
