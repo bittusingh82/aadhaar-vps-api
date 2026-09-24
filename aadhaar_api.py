@@ -4,9 +4,9 @@ import uuid
 import traceback
 
 app = Flask(__name__)
-CORS(app)
+# Enable CORS for all domains and methods (GET, POST, OPTIONS)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
-# Global Error Handler: Ensure Flask NEVER returns HTML, always returns JSON
 @app.errorhandler(Exception)
 def handle_unexpected_error(error):
     return jsonify({
@@ -30,8 +30,11 @@ SESSIONS = {}
 def home():
     return jsonify({"status": "online", "message": "API is running successfully"})
 
-@app.route('/aadhaar/start', methods=['POST'])
+@app.route('/aadhaar/start', methods=['POST', 'OPTIONS'])
 def start_session():
+    if request.method == 'OPTIONS':
+        return jsonify({"ok": True}), 200
+        
     try:
         data = request.get_json(silent=True) or {}
         mobile = data.get('mobile', '')
@@ -50,8 +53,11 @@ def start_session():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
-@app.route('/aadhaar/status/<session_id>', methods=['GET'])
+@app.route('/aadhaar/status/<session_id>', methods=['GET', 'OPTIONS'])
 def get_status(session_id):
+    if request.method == 'OPTIONS':
+        return jsonify({"ok": True}), 200
+        
     if session_id not in SESSIONS:
         return jsonify({"state": "error", "error": "Session not found", "logs": []}), 404
         
@@ -62,8 +68,11 @@ def get_status(session_id):
         "pdf_result": sess["pdf_result"]
     })
 
-@app.route('/aadhaar/submit_otp', methods=['POST'])
+@app.route('/aadhaar/submit_otp', methods=['POST', 'OPTIONS'])
 def submit_otp():
+    if request.method == 'OPTIONS':
+        return jsonify({"ok": True}), 200
+        
     try:
         data = request.get_json(silent=True) or {}
         session_id = data.get('session_id')
@@ -92,7 +101,7 @@ def submit_otp():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
-@app.route('/aadhaar/submit_dl_otp', methods=['POST'])
+@app.route('/aadhaar/submit_dl_otp', methods=['POST', 'OPTIONS'])
 def submit_dl_otp():
     return submit_otp()
 
