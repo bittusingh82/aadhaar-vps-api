@@ -10,9 +10,9 @@ SESSIONS = {}
 
 @app.route('/')
 def home():
-    return jsonify({"status": "online", "message": "Aadhaar VPS API is running successfully"})
+    return jsonify({"status": "online", "message": "API is running successfully"})
 
-@app.route('/api/aadhaar/start', methods=['POST'])
+@app.route('/aadhaar/start', methods=['POST'])
 def start_session():
     try:
         data = request.get_json(silent=True) or {}
@@ -32,7 +32,7 @@ def start_session():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
-@app.route('/api/aadhaar/status/<session_id>', methods=['GET'])
+@app.route('/aadhaar/status/<session_id>', methods=['GET'])
 def get_status(session_id):
     if session_id not in SESSIONS:
         return jsonify({"state": "error", "error": "Session not found", "logs": []}), 404
@@ -44,7 +44,7 @@ def get_status(session_id):
         "pdf_result": sess["pdf_result"]
     })
 
-@app.route('/api/aadhaar/submit_otp', methods=['POST'])
+@app.route('/aadhaar/submit_otp', methods=['POST'])
 def submit_otp():
     try:
         data = request.get_json(silent=True) or {}
@@ -74,6 +74,10 @@ def submit_otp():
         return jsonify({"ok": True, "message": "Processed"})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
+
+@app.route('/aadhaar/submit_dl_otp', methods=['POST'])
+def submit_dl_otp():
+    return submit_otp()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
