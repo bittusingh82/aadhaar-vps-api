@@ -30,34 +30,37 @@ SESSIONS = {}
 def home():
     return jsonify({"status": "online", "message": "API is running successfully"})
 
+# --- START SESSION ROUTES ---
+def process_start():
+    data = request.get_json(silent=True) or {}
+    mobile = data.get('mobile', '')
+    
+    if not mobile:
+        return jsonify({"ok": False, "error": "Mobile number is required"}), 400
+        
+    session_id = str(uuid.uuid4())
+    SESSIONS[session_id] = {
+        "mobile": mobile,
+        "state": "await_otp",
+        "logs": [{"level": "info", "msg": f"Session initialized for target +91 {mobile}"}],
+        "pdf_result": None
+    }
+    return jsonify({"ok": True, "session_id": session_id})
+
 @app.route('/aadhaar/start', methods=['POST', 'OPTIONS'])
+@app.route('/api/aadhaar/aadhaar/start', methods=['POST', 'OPTIONS'])
+@app.route('/api/aadhaar/start', methods=['POST', 'OPTIONS'])
 def start_session():
     if request.method == 'OPTIONS':
         return jsonify({"ok": True}), 200
-        
     try:
-        data = request.get_json(silent=True) or {}
-        mobile = data.get('mobile', '')
-        
-        if not mobile:
-            return jsonify({"ok": False, "error": "Mobile number is required"}), 400
-            
-        session_id = str(uuid.uuid4())
-        SESSIONS[session_id] = {
-            "mobile": mobile,
-            "state": "await_otp",
-            "logs": [{"level": "info", "msg": f"Session initialized for target +91 {mobile}"}],
-            "pdf_result": None
-        }
-        return jsonify({"ok": True, "session_id": session_id})
+        return process_start()
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
-@app.route('/aadhaar/status/<session_id>', methods=['GET', 'OPTIONS'])
-def get_status(session_id):
-    if request.method == 'OPTIONS':
-        return jsonify({"ok": True}), 200
-        
+
+# --- STATUS ROUTES ---
+def process_status(session_id):
     if session_id not in SESSIONS:
         return jsonify({"state": "error", "error": "Session not found", "logs": []}), 404
         
@@ -68,41 +71,59 @@ def get_status(session_id):
         "pdf_result": sess["pdf_result"]
     })
 
+@app.route('/aadhaar/status/<session_id>', methods=['GET', 'OPTIONS'])
+@app.route('/api/aadhaar/aadhaar/status/<session_id>', methods=['GET', 'OPTIONS'])
+@app.route('/api/aadhaar/status/<session_id>', methods=['GET', 'OPTIONS'])
+def get_status(session_id):
+    if request.method == 'OPTIONS':
+        return jsonify({"ok": True}), 200
+    return process_status(session_id)
+
+
+# --- SUBMIT OTP ROUTES ---
+def process_submit():
+    data = request.get_json(silent=True) or {}
+    session_id = data.get('session_id')
+    otp = data.get('otp')
+    
+    if session_id not in SESSIONS:
+        return jsonify({"ok": False, "error": "Session not found"}), 404
+        
+    sess = SESSIONS[session_id]
+    sess["logs"].append({"level": "ok", "msg": f"OTP {otp} received and verified successfully."})
+    sess["state"] = "complete"
+    
+    sess["pdf_result"] = {
+        "name": "Verified Resident",
+        "aadhaar_no": "XXXX-XXXX-1234",
+        "dob": "01-01-1990",
+        "gender": "Male",
+        "address": "Official Record Address, India",
+        "password": "PASS",
+        "pdf_b64": "",
+        "front_b64": "",
+        "back_b64": ""
+    }
+    
+    return jsonify({"ok": True, "message": "Processed"})
+
 @app.route('/aadhaar/submit_otp', methods=['POST', 'OPTIONS'])
+@app.route('/api/aadhaar/aadhaar/submit_otp', methods=['POST', 'OPTIONS'])
+@app.route('/api/aadhaar/submit_otp', methods=['POST', 'OPTIONS'])
 def submit_otp():
     if request.method == 'OPTIONS':
         return jsonify({"ok": True}), 200
-        
     try:
-        data = request.get_json(silent=True) or {}
-        session_id = data.get('session_id')
-        otp = data.get('otp')
-        
-        if session_id not in SESSIONS:
-            return jsonify({"ok": False, "error": "Session not found"}), 404
-            
-        sess = SESSIONS[session_id]
-        sess["logs"].append({"level": "ok", "msg": f"OTP {otp} received and verified successfully."})
-        sess["state"] = "complete"
-        
-        sess["pdf_result"] = {
-            "name": "Verified Resident",
-            "aadhaar_no": "XXXX-XXXX-1234",
-            "dob": "01-01-1990",
-            "gender": "Male",
-            "address": "Official Record Address, India",
-            "password": "PASS",
-            "pdf_b64": "",
-            "front_b64": "",
-            "back_b64": ""
-        }
-        
-        return jsonify({"ok": True, "message": "Processed"})
+        return process_submit()
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
 @app.route('/aadhaar/submit_dl_otp', methods=['POST', 'OPTIONS'])
+@app.route('/api/aadhaar/aadhaar/submit_dl_otp', methods=['POST', 'OPTIONS'])
+@app.route('/api/aadhaar/submit_dl_otp', methods=['POST', 'OPTIONS'])
 def submit_dl_otp():
+    if request.method == 'OPTIONS':
+        return jsonify({"ok": True}), 200
     return submit_otp()
 
 if __name__ == '__main__':
